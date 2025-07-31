@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe Sudan - Interactive Map</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        #map {
+            height: 600px;
+            width: 100%;
+            border: none;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-family: 'Segoe UI', sans-serif;
+            min-width: 150px;
+        }
+
+        .legend h4 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 1.1em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 0.95em;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid rgba(0,0,0,0.2);
+        }
+
+        .safe {
+            background-color: #27ae60;
+        }
+
+        .unsafe {
+            background-color: #e74c3c;
+        }
+
+        .info-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-top: 3px solid #3498db;
+        }
+
+        .city-count {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 10px;
+        }
+
+        .count-item {
+            text-align: center;
+            padding: 10px 20px;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .count-number {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .count-label {
+            font-size: 0.9em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .safe-count { color: #27ae60; }
+        .unsafe-count { color: #e74c3c; }
+
+        /* Custom marker styles */
+        .custom-popup {
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .popup-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .popup-status {
+            padding: 4px 12px;
+            border-radius: 15px;
+            color: white;
+            font-size: 0.9em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
+        .popup-safe { background-color: #27ae60; }
+        .popup-unsafe { background-color: #e74c3c; }
+
+        .popup-coords {
+            font-size: 0.85em;
+            color: #666;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ Safe Sudan</h1>
+            <p>Interactive Safety Map of Sudan Cities</p>
+        </div>
+        
+        <div style="position: relative;">
+            <div id="map"></div>
+            
+            <div class="legend">
+                <h4>Safety Status</h4>
+                <div class="legend-item">
+                    <div class="legend-color safe"></div>
+                    <span>Safe Cities</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color unsafe"></div>
+                    <span>Unsafe Cities</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="city-count">
+                <div class="count-item">
+                    <div class="count-number safe-count" id="safe-count">0</div>
+                    <div class="count-label">Safe Cities</div>
+                </div>
+                <div class="count-item">
+                    <div class="count-number unsafe-count" id="unsafe-count">0</div>
+                    <div class="count-label">Unsafe Cities</div>
+                </div>
+                <div class="count-item">
+                    <div class="count-number" style="color: #3498db;" id="total-count">0</div>
+                    <div class="count-label">Total Cities</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <script>
+        // City data with coordinates - will be updated automatically
+        let cities = [
+            { name: "Khartoum", lat: 15.5007, lng: 32.5599, status: "unsafe", lastUpdated: new Date().toISOString() },
+            { name: "Port Sudan", lat: 19.6348, lng: 37.2152, status: "safe", lastUpdated: new Date().toISOString() },
+            { name: "El Obeid", lat: 13.1833, lng: 30.2167, status: "unsafe", lastUpdated: new Date().toISOString() },
+            { name: "Kassala", lat: 15.4510, lng: 36.4000, status: "safe", lastUpdated: new Date().toISOString() },
+            { name: "Nyala", lat: 12.0498, lng: 24.9032, status: "unsafe", lastUpdated: new Date().toISOString() },
+            { name: "Al-Fashir", lat: 13.6270, lng: 25.3496, status: "unsafe", lastUpdated: new Date().toISOString() },
+            { name: "Wad Madani", lat: 14.4015, lng: 33.5119, status: "safe", lastUpdated: new Date().toISOString() },
+            { name: "Al-Ubayyid", lat: 13.1833, lng: 30.2167, status: "unsafe", lastUpdated: new Date().toISOString() },
+            { name: "Kosti", lat: 13.1629, lng: 32.6653, status: "safe", lastUpdated: new Date().toISOString() },
+            { name: "Atbara", lat: 17.7022, lng: 33.9743, status: "safe", lastUpdated: new Date().toISOString() }
+        ];
+
+        // Configuration for automatic updates
+        const AUTO_UPDATE_CONFIG = {
+            enabled: true,
+            interval: 30000, // 30 seconds (change to 300000 for 5 minutes)
+            apiUrl: 'https://your-api-endpoint.com/sudan-cities-status', // Replace with your API
+            mockMode: true // Set to false when you have real API
+        };
+
+        // Initialize the map centered on Sudan
+        const map = L.map('map').setView([15.0, 30.0], 6);
+        
+        // Store markers for easy updating
+        let cityMarkers = new Map();
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18,
+        }).addTo(map);
+
+        // Custom icons
+        const safeIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: '<div style="background-color: #27ae60; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+
+        const unsafeIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: '<div style="background-color: #e74c3c; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+
+        // Counters
+        let safeCount = 0;
+        let unsafeCount = 0;
+
+        // Function to create marker popup content
+        function createPopupContent(city) {
+            const statusClass = city.status === 'safe' ? 'popup-safe' : 'popup-unsafe';
+            const lastUpdate = new Date(city.lastUpdated).toLocaleString('ar-SA');
+            
+            return `
+                <div class="custom-popup">
+                    <div class="popup-title">${city.name}</div>
+                    <div class="popup-status ${statusClass}">${city.status === 'safe' ? 'آمن' : 'غير آمن'}</div>
+                    <div class="popup-coords">
+                        📍 ${city.lat.toFixed(4)}°, ${city.lng.toFixed(4)}°
+                    </div>
+                    <div style="font-size: 0.8em; color: #888; margin-top: 5px;">
+                        آخر تحديث: ${lastUpdate}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Function to update city markers
+        function updateCityMarkers() {
+            // Clear existing markers
+            cityMarkers.forEach(marker => map.removeLayer(marker));
+            cityMarkers.clear();
+            
+            // Reset counters
+            safeCount = 0;
+            unsafeCount = 0;
+
+            // Add updated markers
+            cities.forEach(city => {
+                const icon = city.status === 'safe' ? safeIcon : unsafeIcon;
+                
+                // Count cities
+                if (city.status === 'safe') {
+                    safeCount++;
+                } else {
+                    unsafeCount++;
+                }
+
+                const marker = L.marker([city.lat, city.lng], { icon: icon }).addTo(map);
+                marker.bindPopup(createPopupContent(city));
+                
+                // Store marker for future updates
+                cityMarkers.set(city.name, marker);
+            });
+
+            // Update counters in UI
+            document.getElementById('safe-count').textContent = safeCount;
+            document.getElementById('unsafe-count').textContent = unsafeCount;
+            document.getElementById('total-count').textContent = safeCount + unsafeCount;
+        }
+
+        // Function to fetch new data from API
+        async function fetchCityData() {
+            if (!AUTO_UPDATE_CONFIG.enabled) return;
+
+            try {
+                if (AUTO_UPDATE_CONFIG.mockMode) {
+                    // Simulate API response with random status changes
+                    cities = cities.map(city => ({
+                        ...city,
+                        status: Math.random() > 0.7 ? (city.status === 'safe' ? 'unsafe' : 'safe') : city.status,
+                        lastUpdated: new Date().toISOString()
+                    }));
+                    
+                    console.log('🔄 محاكاة تحديث البيانات - Mock data updated');
+                    updateCityMarkers();
+                } else {
+                    // Real API call
+                    const response = await fetch(AUTO_UPDATE_CONFIG.apiUrl);
+                    if (response.ok) {
+                        const newData = await response.json();
+                        cities = newData;
+                        updateCityMarkers();
+                        console.log('✅ تم تحديث البيانات من الخادم - Data updated from server');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ خطأ في تحديث البيانات - Error updating data:', error);
+            }
+        }
+
+        // Function to start automatic updates
+        function startAutoUpdate() {
+            if (AUTO_UPDATE_CONFIG.enabled) {
+                setInterval(fetchCityData, AUTO_UPDATE_CONFIG.interval);
+                console.log(`🚀 بدأ التحديث التلقائي كل ${AUTO_UPDATE_CONFIG.interval/1000} ثانية`);
+            }
+        }
+
+        // Add Sudan border outline (approximate)
+        const sudanBounds = [
+            [22.0, 22.0], [22.0, 38.5], [8.5, 38.5], [8.5, 22.0], [22.0, 22.0]
+        ];
+
+        L.polygon(sudanBounds, {
+            color: '#2c3e50',
+            weight: 3,
+            opacity: 0.7,
+            fillOpacity: 0.1,
+            fillColor: '#3498db'
+        }).addTo(map);
+
+        // Initialize the map with current data
+        updateCityMarkers();
+
+        // Fit map to show all markers
+        const group = new L.featureGroup(Array.from(cityMarkers.values()));
+        if (cityMarkers.size > 0) {
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+
+        // Start automatic updates
+        startAutoUpdate();
+
+        // Add manual refresh button
+        const refreshButton = L.control({position: 'topleft'});
+        refreshButton.onAdd = function(map) {
+            const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+            div.style.backgroundColor = 'white';
+            div.style.backgroundImage = 'none';
+            div.style.width = '40px';
+            div.style.height = '40px';
+            div.style.cursor = 'pointer';
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.justifyContent = 'center';
+            div.style.fontSize = '18px';
+            div.innerHTML = '🔄';
+            div.title = 'تحديث البيانات يدوياً';
+            
+            div.onclick = function(){
+                fetchCityData();
+                div.innerHTML = '⏳';
+                setTimeout(() => {
+                    div.innerHTML = '🔄';
+                }, 1000);
+            }
+            return div;
+        };
+        refreshButton.addTo(map);
+    </script>
+</body>
+</html>
